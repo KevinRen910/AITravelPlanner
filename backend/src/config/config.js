@@ -9,7 +9,9 @@ module.exports = {
   },
   ai: {
     apiKey: process.env.AI_API_KEY,
-    baseUrl: process.env.AI_BASE_URL
+    baseUrl: process.env.AI_BASE_URL || 'https://dashscope.aliyuncs.com/api/v1',
+    model: process.env.AI_MODEL || 'deepseek-reasoner',
+    workspace: process.env.AI_WORKSPACE || 'default'
   },
   speech: {
     apiKey: process.env.SPEECH_API_KEY,
