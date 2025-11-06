@@ -1,28 +1,46 @@
-import { ConfigProvider } from 'antd';
-import zhCN from 'antd/lib/locale/zh_CN';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
-import store from './store/index';
+import { ConfigProvider } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import store from './store';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import TripPlanningPage from './pages/TripPlanningPage';
 import BudgetManagementPage from './pages/BudgetManagementPage';
 import UserProfilePage from './pages/UserProfilePage';
+import LoginPage from './pages/LoginPage';
+import ApiKeySettingsPage from './pages/ApiKeySettingsPage';
+import 'antd/dist/reset.css';
 import './App.css';
+
+// 受保护的路由组件
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const token = localStorage.getItem('token');
+  return token ? <>{children}</> : <Navigate to="/login" />;
+};
 
 function App() {
   return (
     <Provider store={store}>
       <ConfigProvider locale={zhCN}>
         <Router>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/trip-planning" element={<TripPlanningPage />} />
-              <Route path="/budget-management" element={<BudgetManagementPage />} />
-              <Route path="/user-profile" element={<UserProfilePage />} />
-            </Routes>
-          </Layout>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Routes>
+                    <Route index element={<HomePage />} />
+                    <Route path="trips" element={<TripPlanningPage />} />
+                    <Route path="budget" element={<BudgetManagementPage />} />
+                    <Route path="profile" element={<UserProfilePage />} />
+                    <Route path="api-keys" element={<ApiKeySettingsPage />} />
+                  </Routes>
+                </Layout>
+              </ProtectedRoute>
+            } />
+          </Routes>
         </Router>
       </ConfigProvider>
     </Provider>

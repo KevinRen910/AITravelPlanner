@@ -1,18 +1,24 @@
-import React, { ReactNode } from 'react';
-import { Layout as AntLayout, Menu } from 'antd';
-import { HomeOutlined, CalendarOutlined, WalletOutlined, UserOutlined } from '@ant-design/icons';
+import React from 'react';
+import { Layout as AntLayout, Menu, Avatar, Dropdown, Space } from 'antd';
+import { 
+  HomeOutlined, 
+  CompassOutlined, 
+  WalletOutlined, 
+  UserOutlined, 
+  SettingOutlined,
+  LogoutOutlined,
+  KeyOutlined
+} from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
-const { Header, Content, Sider } = AntLayout;
+const { Header, Sider, Content } = AntLayout;
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const currentPath = location.pathname;
+  const user = useSelector((state: RootState) => state.user);
 
   const menuItems = [
     {
@@ -21,51 +27,100 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: '首页',
     },
     {
-      key: '/trip-planning',
-      icon: <CalendarOutlined />,
+      key: '/trips',
+      icon: <CompassOutlined />,
       label: '行程规划',
     },
     {
-      key: '/budget-management',
+      key: '/budget',
       icon: <WalletOutlined />,
       label: '预算管理',
     },
     {
-      key: '/user-profile',
+      key: '/profile',
       icon: <UserOutlined />,
       label: '个人资料',
+    },
+    {
+      key: '/api-keys',
+      icon: <KeyOutlined />,
+      label: 'API密钥',
+    },
+  ];
+
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: '个人资料',
+      onClick: () => navigate('/profile'),
+    },
+    {
+      key: 'api-keys',
+      icon: <KeyOutlined />,
+      label: 'API密钥设置',
+      onClick: () => navigate('/api-keys'),
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      },
     },
   ];
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
-      <Header className="header" style={{ display: 'flex', alignItems: 'center' }}>
-        <div className="logo" style={{ color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
-          AI旅行规划助手
+      <Sider
+        breakpoint="lg"
+        collapsedWidth="0"
+        onBreakpoint={(broken) => {
+          console.log(broken);
+        }}
+        onCollapse={(collapsed, type) => {
+          console.log(collapsed, type);
+        }}
+      >
+        <div className="demo-logo-vertical" style={{ 
+          height: '64px', 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          color: 'white',
+          fontSize: '16px',
+          fontWeight: 'bold'
+        }}>
+          AI旅行规划师
         </div>
-      </Header>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          onClick={({ key }) => navigate(key)}
+        />
+      </Sider>
       <AntLayout>
-        <Sider width={200} className="site-layout-background">
-          <Menu
-            mode="inline"
-            selectedKeys={[currentPath]}
-            style={{ height: '100%', borderRight: 0 }}
-            items={menuItems}
-            onClick={(e) => navigate(e.key)}
-          />
-        </Sider>
-        <AntLayout style={{ padding: '24px' }}>
-          <Content
-            className="site-layout-background"
-            style={{
-              padding: 24,
-              margin: 0,
-              minHeight: 280,
-            }}
-          >
+        <Header style={{ padding: '0 24px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+            AI旅行规划师
+          </div>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Space style={{ cursor: 'pointer' }}>
+              <Avatar src={user.avatar} icon={<UserOutlined />} />
+              <span>{user.username || '用户'}</span>
+            </Space>
+          </Dropdown>
+        </Header>
+        <Content style={{ margin: '24px 16px 0', overflow: 'initial' }}>
+          <div style={{ padding: 24, minHeight: 360, background: '#fff' }}>
             {children}
-          </Content>
-        </AntLayout>
+          </div>
+        </Content>
       </AntLayout>
     </AntLayout>
   );

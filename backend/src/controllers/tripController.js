@@ -10,11 +10,17 @@ class TripController {
       // 调用AI生成行程计划
       const tripPlan = await aiService.generateTripPlan(userInput);
       
-      // 保存行程到数据库
+      // 保存行程到数据库 - 添加缺失的字段
       const { data, error } = await supabase
         .from('trips')
         .insert({
           user_id: userId,
+          destination: preferences.destination,
+          start_date: preferences.startDate,
+          end_date: preferences.endDate,
+          travelers: preferences.travelers,
+          theme: preferences.theme,
+          special_requests: preferences.specialRequests,
           plan_content: tripPlan,
           preferences: preferences,
           created_at: new Date(),
