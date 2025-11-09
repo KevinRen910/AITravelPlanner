@@ -107,18 +107,36 @@ class SpeechService {
   }
 
   // 使用后端API进行语音识别（备用方案）
+  /**
+   * 使用后端API进行语音识别（改进版）
+   */
   private async startBackendRecognition(): Promise<string> {
     return new Promise(async (resolve, reject) => {
       if (!this.isBackendAvailable) {
-        reject(new Error('语音识别服务不可用'));
+        reject(new Error('语音识别服务不可用，请检查后端服务配置'));
         return;
       }
 
       try {
-        // 使用浏览器的MediaRecorder录制音频
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        // 检查麦克风权限
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        });
+        
+        const mediaRecorder = new MediaRecorder(stream, { 
+          mimeType: 'audio/webm;codecs=opus',
+          audioBitsPerSecond: 16000
+        });
+        
         const audioChunks: Blob[] = [];
+        let recordingTimeout: NodeJS.Timeout;
 
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
@@ -127,39 +145,68 @@ class SpeechService {
         };
 
         mediaRecorder.onstop = async () => {
+          clearTimeout(recordingTimeout);
           try {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            if (audioChunks.length === 0) {
+              throw new Error('未录制到音频数据');
+            }
+
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+            
+            // 检查音频时长（至少1秒）
+            const audio = new Audio();
+            audio.src = URL.createObjectURL(audioBlob);
+            
+            await new Promise((resolve) => {
+              audio.onloadedmetadata = () => {
+                if (audio.duration < 1) {
+                  throw new Error('录音时间太短，请至少录制1秒');
+                }
+                resolve(null);
+              };
+            });
+
             const transcript = await this.recognizeWithBackend(audioBlob);
             resolve(transcript);
           } catch (error) {
             reject(error);
           } finally {
             stream.getTracks().forEach(track => track.stop());
+            URL.revokeObjectURL(audio.src);
           }
+        };
+
+        mediaRecorder.onerror = (event) => {
+          clearTimeout(recordingTimeout);
+          reject(new Error('录音设备错误'));
         };
 
         // 开始录制
-        mediaRecorder.start();
+        mediaRecorder.start(100); // 每100ms收集一次数据
         
-        // 5秒后自动停止（或用户可以手动停止）
-        setTimeout(() => {
+        // 设置10秒自动停止
+        recordingTimeout = setTimeout(() => {
           if (mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
           }
-        }, 5000);
+        }, 10000);
 
-        // 返回一个可以手动停止的函数
-        const stopRecording = () => {
+        // 暴露停止函数
+        (this as any).stopBackendRecording = () => {
+          clearTimeout(recordingTimeout);
           if (mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
           }
         };
 
-        // 将停止函数暴露给外部
-        (this as any).stopBackendRecording = stopRecording;
-
       } catch (error) {
-        reject(new Error('无法访问麦克风'));
+        if (error.name === 'NotAllowedError') {
+          reject(new Error('麦克风权限被拒绝，请允许网站访问麦克风'));
+        } else if (error.name === 'NotFoundError') {
+          reject(new Error('未找到可用的麦克风设备'));
+        } else {
+          reject(new Error(`无法访问麦克风: ${error.message}`));
+        }
       }
     });
   }

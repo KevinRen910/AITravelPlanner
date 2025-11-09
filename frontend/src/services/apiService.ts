@@ -110,4 +110,25 @@ export const apiKeyAPI = {
   updateApiKeys: (userId: string, apiKeys: any) => api.put(`/apikeys/user/${userId}`, { apiKeys }),
 };
 
+// 地图相关API
+export const mapAPI = {
+  // 地理编码
+  geocode: (addressData: any) => api.post('/map/geocode', addressData),
+  
+  // 逆地理编码
+  reverseGeocode: (coordsData: any) => api.post('/map/reverse-geocode', coordsData),
+  
+  // 搜索地点
+  searchPlaces: (searchData: any) => api.post('/map/search-places', searchData),
+  
+  // 路径规划
+  drivingRoute: (routeData: any) => api.post('/map/driving-route', routeData),
+  
+  // 获取天气
+  getWeather: (weatherData: any) => api.post('/map/weather', weatherData),
+  
+  // 检查服务状态
+  checkStatus: () => api.get('/map/status'),
+};
+
 export default api;

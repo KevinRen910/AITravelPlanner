@@ -137,4 +137,121 @@ class MapService {
   }
 }
 
+// 后端API调用方法
+export class MapAPIService {
+  private baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+  /**
+   * 地理编码（后端API）
+   */
+  async geocode(address: string, city?: string): Promise<{longitude: number, latitude: number, address: string}> {
+    const response = await fetch(`${this.baseUrl}/map/geocode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ address, city }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`地理编码失败: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * 逆地理编码（后端API）
+   */
+  async reverseGeocode(longitude: number, latitude: number): Promise<{address: string}> {
+    const response = await fetch(`${this.baseUrl}/map/reverse-geocode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ longitude, latitude }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`逆地理编码失败: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * 搜索地点（后端API）
+   */
+  async searchPlaces(keyword: string, city?: string, types?: string): Promise<any[]> {
+    const response = await fetch(`${this.baseUrl}/map/search-places`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ keyword, city, types }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`地点搜索失败: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.pois || [];
+  }
+
+  /**
+   * 路径规划（后端API）
+   */
+  async drivingRoute(origin: {longitude: number, latitude: number}, destination: {longitude: number, latitude: number}): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/map/driving-route`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ origin, destination }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`路径规划失败: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * 获取天气（后端API）
+   */
+  async getWeather(city: string): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/map/weather`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ city }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`天气查询失败: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * 检查地图服务状态
+   */
+  async checkStatus(): Promise<{connected: boolean, message: string}> {
+    const response = await fetch(`${this.baseUrl}/map/status`);
+
+    if (!response.ok) {
+      throw new Error(`服务状态检查失败: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+}
+
+// 导出后端API服务实例
+export const mapAPIService = new MapAPIService();
+
 export default new MapService();
