@@ -117,6 +117,8 @@ class SpeechService {
         return;
       }
 
+      let audio: HTMLAudioElement | null = null;
+
       try {
         // 检查麦克风权限
         await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -154,12 +156,12 @@ class SpeechService {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
             
             // 检查音频时长（至少1秒）
-            const audio = new Audio();
+            audio = new Audio();
             audio.src = URL.createObjectURL(audioBlob);
             
             await new Promise((resolve) => {
-              audio.onloadedmetadata = () => {
-                if (audio.duration < 1) {
+              audio!.onloadedmetadata = () => {
+                if (audio!.duration < 1) {
                   throw new Error('录音时间太短，请至少录制1秒');
                 }
                 resolve(null);
@@ -172,11 +174,13 @@ class SpeechService {
             reject(error);
           } finally {
             stream.getTracks().forEach(track => track.stop());
-            URL.revokeObjectURL(audio.src);
+            if (audio) {
+              URL.revokeObjectURL(audio.src);
+            }
           }
         };
 
-        mediaRecorder.onerror = (event) => {
+        mediaRecorder.onerror = (_event: ErrorEvent) => {
           clearTimeout(recordingTimeout);
           reject(new Error('录音设备错误'));
         };
@@ -200,12 +204,16 @@ class SpeechService {
         };
 
       } catch (error) {
-        if (error.name === 'NotAllowedError') {
-          reject(new Error('麦克风权限被拒绝，请允许网站访问麦克风'));
-        } else if (error.name === 'NotFoundError') {
-          reject(new Error('未找到可用的麦克风设备'));
+        if (error instanceof Error) {
+          if (error.name === 'NotAllowedError') {
+            reject(new Error('麦克风权限被拒绝，请允许网站访问麦克风'));
+          } else if (error.name === 'NotFoundError') {
+            reject(new Error('未找到可用的麦克风设备'));
+          } else {
+            reject(new Error(`无法访问麦克风: ${error.message}`));
+          }
         } else {
-          reject(new Error(`无法访问麦克风: ${error.message}`));
+          reject(new Error('未知错误'));
         }
       }
     });
