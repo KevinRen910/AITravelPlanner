@@ -17,7 +17,7 @@ const HomePage: React.FC = () => {
             bordered={false}
             extra={<CalendarOutlined />}
             actions={[
-              <Button type="primary" onClick={() => navigate('/trip-planning')}>
+              <Button type="primary" onClick={() => navigate('/trips')}>
                 开始规划
               </Button>
             ]}
@@ -32,7 +32,7 @@ const HomePage: React.FC = () => {
             bordered={false}
             extra={<WalletOutlined />}
             actions={[
-              <Button type="primary" onClick={() => navigate('/budget-management')}>
+              <Button type="primary" onClick={() => navigate('/budget')}>
                 管理预算
               </Button>
             ]}
@@ -49,7 +49,7 @@ const HomePage: React.FC = () => {
             bordered={false}
             extra={<UserOutlined />}
             actions={[
-              <Button type="primary" onClick={() => navigate('/user-profile')}>
+              <Button type="primary" onClick={() => navigate('/profile')}>
                 查看资料
               </Button>
             ]}

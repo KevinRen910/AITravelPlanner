@@ -1,28 +1,83 @@
-import React from 'react';
-import { Card, Form, Input, Button, Avatar, Upload, message } from 'antd';
+import React, { useEffect } from 'react';
+import { Card, Form, Input, Button, Avatar, Upload, message, Spin } from 'antd';
 import { UserOutlined, UploadOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { RcFile } from 'antd/es/upload';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store';
+import { updateUser } from '../store/features/userSlice';
+import { userAPI } from '../services/apiService';
 
 const UserProfilePage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
+  const [initializing, setInitializing] = React.useState(true);
+  const user = useSelector((state: RootState) => state.user.user);
+  const dispatch = useDispatch();
 
-  // 模拟用户数据
-  const initialValues = {
-    name: '旅行爱好者',
-    email: 'travel@example.com',
-    phone: '13800138000',
-    preferences: '喜欢自然风光和美食体验'
-  };
+  // 当用户信息变化时，更新表单数据
+  useEffect(() => {
+    if (user) {
+      form.setFieldsValue({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.preferences?.phone || '',
+        preferences: user.preferences?.description || ''
+      });
+      setInitializing(false);
+    } else {
+      // 如果没有用户信息，尝试从localStorage获取
+      const userDataStr = localStorage.getItem('user');
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        form.setFieldsValue({
+          name: userData.username || '',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          preferences: userData.preferences?.description || ''
+        });
+      }
+      setInitializing(false);
+    }
+  }, [user, form]);
 
-  const onFinish = () => {
+  const onFinish = async (values: any) => {
     setLoading(true);
-    // 模拟保存用户信息
-    setTimeout(() => {
+    try {
+      if (!user) {
+        message.error('用户未登录');
+        return;
+      }
+
+      // 更新用户信息
+      const response = await userAPI.updateUser(user.id, {
+        username: values.name,
+        email: values.email,
+        phone: values.phone,
+        preferences: {
+          ...user.preferences,
+          phone: values.phone,
+          description: values.preferences
+        }
+      });
+
+      // 更新Redux状态
+      dispatch(updateUser({
+        name: values.name,
+        email: values.email,
+        preferences: {
+          ...user.preferences,
+          phone: values.phone,
+          description: values.preferences
+        }
+      }));
+
       message.success('个人资料已更新！');
+    } catch (error: any) {
+      message.error(error.response?.data?.error || '更新失败');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   // 上传头像配置
@@ -53,12 +108,20 @@ const UserProfilePage: React.FC = () => {
     },
   };
 
+  if (initializing) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 style={{ marginBottom: '32px' }}>个人资料</h1>
       
       <Card>
-        <Form form={form} layout="vertical" onFinish={onFinish} initialValues={initialValues}>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
             <Avatar size={80} icon={<UserOutlined />} style={{ marginRight: '16px' }} />
             <Upload {...uploadProps}>
