@@ -3,11 +3,8 @@ import { Layout as AntLayout, Menu, Avatar, Dropdown, Space } from 'antd';
 import { 
   HomeOutlined, 
   CompassOutlined, 
-  WalletOutlined, 
   UserOutlined, 
-  SettingOutlined,
-  LogoutOutlined,
-  KeyOutlined
+  LogoutOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -32,19 +29,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       label: '行程规划',
     },
     {
-      key: '/budget',
-      icon: <WalletOutlined />,
-      label: '预算管理',
-    },
-    {
       key: '/profile',
       icon: <UserOutlined />,
       label: '个人资料',
-    },
-    {
-      key: '/api-keys',
-      icon: <KeyOutlined />,
-      label: 'API密钥',
     },
   ];
 
@@ -54,12 +41,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       icon: <UserOutlined />,
       label: '个人资料',
       onClick: () => navigate('/profile'),
-    },
-    {
-      key: 'api-keys',
-      icon: <KeyOutlined />,
-      label: 'API密钥设置',
-      onClick: () => navigate('/api-keys'),
     },
     {
       key: 'logout',

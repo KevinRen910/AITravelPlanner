@@ -9,10 +9,8 @@ import HomePage from './pages/HomePage';
 import TripPlanningPage from './pages/TripPlanningPage';
 import TripDetailPage from './pages/TripDetailPage';
 import TripMapPage from './pages/TripMapPage';
-import BudgetManagementPage from './pages/BudgetManagementPage';
 import UserProfilePage from './pages/UserProfilePage';
 import LoginPage from './pages/LoginPage';
-import ApiKeySettingsPage from './pages/ApiKeySettingsPage';
 import { setUser } from './store/features/userSlice';
 import 'antd/dist/reset.css';
 import './App.css';
@@ -53,9 +51,7 @@ const AppContent: React.FC = () => {
         <Route path="/trips" element={<Layout><TripPlanningPage /></Layout>} />
         <Route path="/trips/:id" element={<Layout><TripDetailPage /></Layout>} />
         <Route path="/trips/:id/map" element={<Layout><TripMapPage /></Layout>} />
-        <Route path="/budget" element={<Layout><BudgetManagementPage /></Layout>} />
         <Route path="/profile" element={<Layout><UserProfilePage /></Layout>} />
-        <Route path="/api-keys" element={<Layout><ApiKeySettingsPage /></Layout>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

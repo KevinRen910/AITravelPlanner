@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Button, Row, Col } from 'antd';
-import { CalendarOutlined, WalletOutlined, UserOutlined } from '@ant-design/icons';
+import { HomeOutlined, CompassOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
@@ -15,7 +15,7 @@ const HomePage: React.FC = () => {
           <Card 
             title="行程规划"
             bordered={false}
-            extra={<CalendarOutlined />}
+            extra={<CompassOutlined />}
             actions={[
               <Button type="primary" onClick={() => navigate('/trips')}>
                 开始规划
@@ -27,23 +27,6 @@ const HomePage: React.FC = () => {
         </Col>
         
         <Col span={12}>
-          <Card 
-            title="预算管理"
-            bordered={false}
-            extra={<WalletOutlined />}
-            actions={[
-              <Button type="primary" onClick={() => navigate('/budget')}>
-                管理预算
-              </Button>
-            ]}
-          >
-            <p>记录和分析旅行支出，设置预算目标，确保旅行花费合理可控。</p>
-          </Card>
-        </Col>
-      </Row>
-      
-      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
-        <Col span={24}>
           <Card 
             title="个人资料"
             bordered={false}
