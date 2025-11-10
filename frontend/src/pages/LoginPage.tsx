@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message, Tabs } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
+import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { userAPI } from '../services/apiService';
@@ -13,21 +13,17 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // 登录处理
   const handleLogin = async (values: any) => {
     setLoading(true);
     try {
       const response = await userAPI.login(values);
-      const { user, token } = response.data;
+      const { token, user } = response.data;
       
-      // 保存token和用户信息到localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      
-      // 更新Redux状态
       dispatch(setUser(user));
       
-      message.success('登录成功');
+      message.success('登录成功！');
       navigate('/');
     } catch (error: any) {
       message.error(error.response?.data?.error || '登录失败');
@@ -36,21 +32,17 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // 注册处理
   const handleRegister = async (values: any) => {
     setLoading(true);
     try {
       const response = await userAPI.register(values);
-      const { user, token } = response.data;
+      const { token, user } = response.data;
       
-      // 保存token和用户信息到localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      
-      // 更新Redux状态
       dispatch(setUser(user));
       
-      message.success('注册成功');
+      message.success('注册成功！');
       navigate('/');
     } catch (error: any) {
       message.error(error.response?.data?.error || '注册失败');
@@ -118,16 +110,6 @@ const LoginPage: React.FC = () => {
               autoComplete="off"
             >
               <Form.Item
-                name="username"
-                rules={[{ required: true, message: '请输入用户名' }]}
-              >
-                <Input 
-                  prefix={<UserOutlined />} 
-                  placeholder="用户名" 
-                />
-              </Form.Item>
-
-              <Form.Item
                 name="email"
                 rules={[
                   { required: true, message: '请输入邮箱' },
@@ -141,15 +123,6 @@ const LoginPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name="phone"
-              >
-                <Input 
-                  prefix={<PhoneOutlined />} 
-                  placeholder="手机号（可选）" 
-                />
-              </Form.Item>
-
-              <Form.Item
                 name="password"
                 rules={[
                   { required: true, message: '请输入密码' },
@@ -159,27 +132,6 @@ const LoginPage: React.FC = () => {
                 <Input.Password 
                   prefix={<LockOutlined />} 
                   placeholder="密码" 
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="confirmPassword"
-                dependencies={['password']}
-                rules={[
-                  { required: true, message: '请确认密码' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue('password') === value) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error('两次输入的密码不一致'));
-                    },
-                  }),
-                ]}
-              >
-                <Input.Password 
-                  prefix={<LockOutlined />} 
-                  placeholder="确认密码" 
                 />
               </Form.Item>
 

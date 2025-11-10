@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout as AntLayout, Menu, Avatar, Dropdown, Space } from 'antd';
+import { Layout as AntLayout, Menu, Dropdown, Space } from 'antd';
 import { 
   HomeOutlined, 
   CompassOutlined, 
@@ -92,8 +92,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Space style={{ cursor: 'pointer' }}>
-              <Avatar src={user.user?.avatar} icon={<UserOutlined />} />
-              <span>{user.user?.name || '用户'}</span>
+              <span>{user.user?.email || '未登录'}</span>
             </Space>
           </Dropdown>
         </Header>

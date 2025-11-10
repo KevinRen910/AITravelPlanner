@@ -37,7 +37,7 @@ const HomePage: React.FC = () => {
               </Button>
             ]}
           >
-            <p>管理您的个人信息和旅行偏好，让AI更好地了解您的需求。</p>
+            <p>管理您的邮箱信息。</p>
           </Card>
         </Col>
       </Row>
