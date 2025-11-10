@@ -21,8 +21,8 @@ class BailianService {
       return this.parseAIResponse(response);
     } catch (error) {
       console.error('阿里云百炼API调用错误:', error);
-      // 如果API调用失败，返回模拟数据
-      return this.generateMockTripPlan(userInput);
+      // 不再静默回退到 mock 数据，改为向上抛出错误，由调用方决定如何处理
+      throw error;
     }
   }
 
@@ -36,8 +36,8 @@ class BailianService {
       return this.parseAIResponse(response);
     } catch (error) {
       console.error('阿里云百炼API调用错误:', error);
-      // 如果API调用失败，返回模拟数据
-      return this.generateMockBudget(tripDetails);
+      // 不再静默回退到 mock 数据，改为向上抛出错误，由调用方决定如何处理
+      throw error;
     }
   }
 
@@ -68,80 +68,56 @@ class BailianService {
    * 构建旅行计划提示词
    */
   buildTripPrompt(userInput) {
-    return `请根据用户需求生成一份详细的旅行计划：${userInput}。
-
-请以JSON格式返回以下内容：
-{
-  "dailyItinerary": [
-    {
-      "day": 1,
-      "date": "YYYY-MM-DD",
-      "morning": "上午活动安排",
-      "afternoon": "下午活动安排", 
-      "evening": "晚上活动安排",
-      "attractions": ["景点1", "景点2"],
-      "restaurants": ["餐厅1", "餐厅2"],
-      "accommodation": "住宿建议",
-      "transportation": "交通建议"
+    // userInput 可能是字符串也可能是对象，优先解析对象字段
+    let inputObj = userInput;
+    if (typeof userInput === 'string') {
+      try {
+        inputObj = JSON.parse(userInput);
+      } catch (e) {
+        // 不是 JSON 字符串，保留为文本描述
+        inputObj = { description: userInput };
+      }
     }
-  ],
-  "budgetEstimation": {
-    "total": 10000,
-    "categories": {
-      "transportation": 2000,
-      "accommodation": 3000,
-      "food": 2000,
-      "activities": 2000,
-      "shopping": 1000
-    }
-  },
-  "recommendations": {
-    "attractions": ["推荐景点1", "推荐景点2"],
-    "restaurants": ["推荐餐厅1", "推荐餐厅2"],
-    "tips": ["旅行小贴士1", "旅行小贴士2"]
-  }
-}
 
-请确保返回的内容是有效的JSON格式。`;
+    const {
+      destination,
+      start_date,
+      end_date,
+      travelers,
+      theme,
+      special_requests,
+      preferences,
+      description
+    } = inputObj || {};
+
+    let userDesc = '';
+    if (destination) userDesc += `目的地: ${destination}\n`;
+    if (start_date || end_date) userDesc += `日期: ${start_date || ''} - ${end_date || ''}\n`;
+    if (travelers) userDesc += `出行人数: ${travelers}\n`;
+    if (theme) userDesc += `主题: ${theme}\n`;
+    if (special_requests) userDesc += `特殊需求: ${special_requests}\n`;
+    if (preferences && typeof preferences === 'object') userDesc += `偏好: ${JSON.stringify(preferences, null, 2)}\n`;
+    if (description && !userDesc) userDesc = description;
+    if (!userDesc) userDesc = JSON.stringify(inputObj, null, 2);
+
+    return `请根据以下用户需求生成一份详细的旅行计划：\n\n${userDesc}\n\n请以JSON格式返回以下结构，确保返回有效的 JSON：\n{\n  "dailyItinerary": [\n    {\n      "day": 1,\n      "date": "YYYY-MM-DD",\n      "morning": "上午活动安排",\n      "afternoon": "下午活动安排",\n      "evening": "晚上活动安排",\n      "attractions": ["景点1", "景点2"],\n      "restaurants": ["餐厅1", "餐厅2"],\n      "accommodation": "住宿建议",\n      "transportation": "交通建议"\n    }\n  ],\n  "budgetEstimation": {\n    "total": 10000,\n    "categories": {\n      "transportation": 2000,\n      "accommodation": 3000,\n      "food": 2000,\n      "activities": 2000,\n      "shopping": 1000\n    }\n  },\n  "recommendations": {\n    "attractions": ["推荐景点1", "推荐景点2"],\n    "restaurants": ["推荐餐厅1", "推荐餐厅2"],\n    "tips": ["旅行小贴士1", "旅行小贴士2"]\n  }\n}\n`;
   }
 
   /**
    * 构建预算估算提示词
    */
   buildBudgetPrompt(tripDetails) {
-    return `请根据以下旅行详情估算各项费用：${JSON.stringify(tripDetails, null, 2)}。
-
-请以JSON格式返回详细预算明细：
-{
-  "totalBudget": 10000,
-  "currency": "CNY",
-  "breakdown": {
-    "transportation": {
-      "amount": 2000,
-      "description": "交通费用明细"
-    },
-    "accommodation": {
-      "amount": 3000,
-      "description": "住宿费用明细"
-    },
-    "food": {
-      "amount": 2000,
-      "description": "餐饮费用明细"
-    },
-    "activities": {
-      "amount": 2000,
-      "description": "活动费用明细"
-    },
-    "shopping": {
-      "amount": 1000,
-      "description": "购物费用明细"
+    let details = tripDetails;
+    if (typeof tripDetails === 'string') {
+      try {
+        details = JSON.parse(tripDetails);
+      } catch (e) {
+        details = { description: tripDetails };
+      }
     }
-  },
-  "dailyAverage": 2000,
-  "recommendations": ["预算优化建议1", "预算优化建议2"]
-}
 
-请确保返回的内容是有效的JSON格式。`;
+    const summary = JSON.stringify(details, null, 2);
+    return `请根据以下旅行详情估算各项费用：\n\n${summary}\n\n请以JSON格式返回详细预算明细，例如：\n{\n  "totalBudget": 10000,\n  "currency": "CNY",\n  "breakdown": {\n    "transportation": { "amount": 2000, "description": "交通费用明细" },\n    "accommodation": { "amount": 3000, "description": "住宿费用明细" },\n    "food": { "amount": 2000, "description": "餐饮费用明细" },\n    "activities": { "amount": 2000, "description": "活动费用明细" },\n    "shopping": { "amount": 1000, "description": "购物费用明细" }\n  },\n  "dailyAverage": 2000,\n  "recommendations": ["预算优化建议1", "预算优化建议2"]\n}\n`;
   }
 
   /**
@@ -167,89 +143,6 @@ class BailianService {
       console.warn('解析AI响应失败，返回原始内容:', error);
       return response.choices?.[0]?.message?.content || '无法解析AI响应';
     }
-  }
-
-  /**
-   * 生成模拟旅行计划（API调用失败时的回退方案）
-   */
-  generateMockTripPlan(userInput) {
-    console.log('使用模拟数据生成旅行计划');
-    
-    // 智能解析用户输入
-    const days = this.extractDaysFromInput(userInput) || 3;
-    const destination = this.extractDestinationFromInput(userInput) || '目的地';
-    
-    return {
-      dailyItinerary: Array.from({length: days}, (_, i) => ({
-        day: i + 1,
-        date: `2024-${String(i+1).padStart(2, '0')}-01`,
-        morning: `${destination}上午观光活动`,
-        afternoon: `${destination}下午休闲活动`,
-        evening: `${destination}晚上餐饮体验`,
-        attractions: [`${destination}景点${i+1}`, `${destination}景点${i+2}`],
-        restaurants: [`${destination}餐厅${i+1}`, `${destination}餐厅${i+2}`],
-        accommodation: `${destination}酒店住宿`,
-        transportation: `${destination}当地交通`
-      })),
-      budgetEstimation: {
-        total: days * 2000,
-        categories: {
-          transportation: days * 300,
-          accommodation: days * 800,
-          food: days * 500,
-          activities: days * 300,
-          shopping: days * 100
-        }
-      },
-      recommendations: {
-        attractions: [`${destination}推荐景点1`, `${destination}推荐景点2`],
-        restaurants: [`${destination}推荐餐厅1`, `${destination}推荐餐厅2`],
-        tips: ['注意天气变化', '提前预订门票', '携带必要证件']
-      }
-    };
-  }
-
-  /**
-   * 生成模拟预算估算（API调用失败时的回退方案）
-   */
-  generateMockBudget(tripDetails) {
-    console.log('使用模拟数据生成预算估算');
-    
-    const days = tripDetails.days || 3;
-    const travelers = tripDetails.travelers || 2;
-    
-    return {
-      totalBudget: days * travelers * 1000,
-      currency: "CNY",
-      breakdown: {
-        transportation: {
-          amount: days * travelers * 200,
-          description: "往返交通及当地交通费用"
-        },
-        accommodation: {
-          amount: days * travelers * 400,
-          description: "酒店住宿费用"
-        },
-        food: {
-          amount: days * travelers * 200,
-          description: "餐饮费用"
-        },
-        activities: {
-          amount: days * travelers * 150,
-          description: "景点门票及活动费用"
-        },
-        shopping: {
-          amount: days * travelers * 50,
-          description: "购物及纪念品费用"
-        }
-      },
-      dailyAverage: travelers * 1000,
-      recommendations: [
-        "提前预订可享受优惠",
-        "选择淡季出行节省费用",
-        "关注当地优惠活动"
-      ]
-    };
   }
 
   /**

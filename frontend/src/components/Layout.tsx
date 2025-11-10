@@ -111,8 +111,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Space style={{ cursor: 'pointer' }}>
-              <Avatar src={user.avatar} icon={<UserOutlined />} />
-              <span>{user.username || '用户'}</span>
+              <Avatar src={user.user?.avatar} icon={<UserOutlined />} />
+              <span>{user.user?.name || '用户'}</span>
             </Space>
           </Dropdown>
         </Header>

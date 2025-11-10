@@ -123,9 +123,7 @@ npm start
 
 1. 在Supabase创建项目并获取连接信息
 2. 运行数据库初始化脚本：
-```bash
-cd backend
-npm run init-db
+   在SQL Editor界面复制 backend/db/init.sql 的全部内容并粘贴，点击run运行
 ```
 
 ### 功能测试

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Input, DatePicker, Select, Form, message, Spin, Modal, Tag, List, Empty } from 'antd';
-import { CompassOutlined, AudioOutlined, StopOutlined, EyeOutlined, CalendarOutlined, UserOutlined } from '@ant-design/icons';
+import { Card, Button, Input, DatePicker, Select, Form, message, Spin, Modal, Tag, List, Empty, Popconfirm } from 'antd';
+import { CompassOutlined, AudioOutlined, StopOutlined, EyeOutlined, CalendarOutlined, UserOutlined, EnvironmentOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
@@ -19,24 +19,14 @@ const TripPlanningPage: React.FC = () => {
   const [generatedPlan, setGeneratedPlan] = useState<any>(null);
   const [userTrips, setUserTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState(false);
+  const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
+  // 语音识别结果将直接回显到 specialRequestsValue
+  // 本地受控值，确保 TextArea 能立即回显并与 Form 保持同步
+  const [specialRequestsValue, setSpecialRequestsValue] = useState<string>('');
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user);
-
-  // 检查用户是否已登录
-  if (!user.isAuthenticated || !user.user) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
-        <Card>
-          <h3>请先登录</h3>
-          <p>您需要登录后才能创建旅行计划</p>
-          <Button type="primary" onClick={() => navigate('/login')}>
-            前往登录
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  
 
   // 获取用户行程列表
   const fetchUserTrips = async () => {
@@ -59,30 +49,93 @@ const TripPlanningPage: React.FC = () => {
     fetchUserTrips();
   }, [user.user?.id]);
 
-  // 开始录音
-  const startRecording = async () => {
-    if (!speechService.isBrowserSupported()) {
-      message.error('您的浏览器不支持语音识别功能');
-      return;
-    }
-
-    setRecording(true);
+  // 初始化 specialRequests 的本地受控值（如果表单已有初始值）
+  useEffect(() => {
     try {
-      const transcript = await speechService.startRecognition();
-      // 将语音识别结果填充到特殊需求字段
-      form.setFieldsValue({ specialRequests: transcript });
-      message.success('语音识别完成');
+      const init = form.getFieldValue('specialRequests') || '';
+      setSpecialRequestsValue(init);
+    } catch (e) {
+      // ignore
+    }
+  }, [form]);
+
+  // 开始录音 - 修复版本
+  const startRecording = async () => {
+    try {
+      // 检查语音识别服务可用性
+      const status = await speechService.getSpeechStatus();
+      
+      if (!status.serviceAvailable) {
+        message.error('语音识别服务不可用，请检查网络连接或服务配置');
+        return;
+      }
+
+      setRecording(true);
+  // 清空之前的识别结果
+      message.info('正在录音...请说话，然后点击停止按钮');
+      
+      // 开始语音识别（异步，不等待结果）
+      speechService.startRecognition()
+        .then((transcript) => {
+          console.debug('speech recognition result:', transcript);
+          if (transcript && transcript.trim()) {
+            message.success('语音识别完成！');
+            // 识别完成后自动填入表单
+            const currentValue = form.getFieldValue('specialRequests') || '';
+            const newValue = currentValue ? `${currentValue} ${transcript}` : transcript;
+            form.setFieldsValue({ specialRequests: newValue });
+            // 同步到受控 TextArea
+            setSpecialRequestsValue(newValue);
+            // 立即读取表单字段以确认回写
+            try {
+              const after = form.getFieldValue('specialRequests');
+              console.debug('specialRequests after setFieldsValue:', after);
+            } catch (e) {
+              console.error('读取 specialRequests 失败', e);
+            }
+            } else {
+            message.warning('未识别到有效语音内容，请重试');
+          }
+        })
+        .catch((error: any) => {
+          console.error('语音识别失败:', error);
+          
+          // 提供更具体的错误提示
+          if (error.message.includes('权限')) {
+            message.error('麦克风权限被拒绝，请允许网站访问麦克风');
+          } else if (error.message.includes('设备')) {
+            message.error('未找到可用的麦克风设备');
+          } else if (error.message.includes('超时')) {
+            message.error('录音超时，请重试');
+          } else {
+            message.error(`语音识别失败: ${error.message}`);
+          }
+        })
+        .finally(() => {
+          setRecording(false);
+        });
+      
     } catch (error: any) {
-      message.error(error.message || '语音识别失败');
-    } finally {
+      console.error('启动录音失败:', error);
+      message.error('启动录音失败，请重试');
       setRecording(false);
     }
   };
 
-  // 停止录音
+  // 停止录音 - 修复版本
   const stopRecording = () => {
-    speechService.stopRecognition();
-    setRecording(false);
+    try {
+      // 停止语音识别
+      speechService.stopRecognition();
+      speechService.stopBackendRecording();
+      
+      message.info('录音已停止');
+    } catch (error) {
+      console.error('停止录音失败:', error);
+      message.error('停止录音失败');
+    } finally {
+      setRecording(false);
+    }
   };
 
   // 提交表单，生成行程计划
@@ -90,7 +143,8 @@ const TripPlanningPage: React.FC = () => {
     setLoading(true);
     try {
       // 构建用户输入字符串
-      const userInput = `目的地：${values.destination}，日期：${values.dates[0].format('YYYY-MM-DD')}至${values.dates[1].format('YYYY-MM-DD')}，人数：${values.travelers}，主题：${values.theme || '无特定主题'}，特殊需求：${values.specialRequests || '无'}`;
+      const userInput = `目的地：${values.destination}，日期：${values.startDate.format('YYYY-MM-DD')}至${values.endDate.format('YYYY-MM-DD')}，人数：${values.travelers}，主题：${values.theme || '无特定主题'}，特殊需求：${values.specialRequests || '无'}`;
+  console.debug('userInput built:', userInput);
       
       // 确保用户ID存在
       const userId = user.user?.id;
@@ -103,25 +157,26 @@ const TripPlanningPage: React.FC = () => {
       // 调用API生成行程计划 - 修复数据结构
       const response = await tripAPI.createTrip({
         destination: values.destination,
-        start_date: values.dates[0].format('YYYY-MM-DD'),
-        end_date: values.dates[1].format('YYYY-MM-DD'),
+        start_date: values.startDate.format('YYYY-MM-DD'),
+        end_date: values.endDate.format('YYYY-MM-DD'),
         travelers: values.travelers,
         theme: values.theme,
         special_requests: values.specialRequests,
         preferences: {
           destination: values.destination,
-          startDate: values.dates[0].format('YYYY-MM-DD'),
-          endDate: values.dates[1].format('YYYY-MM-DD'),
+          startDate: values.startDate.format('YYYY-MM-DD'),
+          endDate: values.endDate.format('YYYY-MM-DD'),
           travelers: values.travelers,
           theme: values.theme,
           specialRequests: values.specialRequests
         }
       });
       
-      const tripData = response.data;
+  // 后端返回可能的形态：{ message, trip }，或直接返回 trip object
+  const tripData = response.data?.trip ?? response.data;
       
       // 验证返回的数据结构
-      if (!tripData.id || !tripData.destination) {
+      if (!tripData?.id || !tripData?.destination) {
         throw new Error('返回的行程数据不完整');
       }
       
@@ -161,15 +216,44 @@ const TripPlanningPage: React.FC = () => {
 
   // 查看行程详情
   const viewTripDetails = () => {
-    if (!generatedPlan?.id) {
-      message.error('行程ID不存在，无法查看详情');
-      return;
-    }
     setPlanModalVisible(false);
-    // 添加延迟确保模态框完全关闭
-    setTimeout(() => {
-      navigate(`/trips/${generatedPlan.id}`);
-    }, 100);
+    navigate(`/trips/${generatedPlan.id}`);
+  };
+
+  // 查看地图视图
+  const viewTripMap = () => {
+    setPlanModalVisible(false);
+    navigate(`/trips/${generatedPlan.id}/map`);
+  };
+
+  // 删除行程
+  const handleDeleteTrip = async (tripId: string) => {
+    setDeletingTripId(tripId);
+    try {
+      await tripAPI.deleteTrip(tripId);
+      
+      // 从本地状态中移除已删除的行程
+      setUserTrips(prevTrips => prevTrips.filter(trip => trip.id !== tripId));
+      
+      // 从localStorage中移除
+      try {
+        const savedTrips = localStorage.getItem('userTrips');
+        if (savedTrips) {
+          let trips = JSON.parse(savedTrips);
+          trips = trips.filter((t: any) => t.id !== tripId);
+          localStorage.setItem('userTrips', JSON.stringify(trips));
+        }
+      } catch (storageError) {
+        console.error('从localStorage删除行程失败:', storageError);
+      }
+      
+      message.success('行程已删除');
+    } catch (error: any) {
+      console.error('删除行程失败:', error);
+      message.error(error.response?.data?.error || '删除行程失败');
+    } finally {
+      setDeletingTripId(null);
+    }
   };
 
   // 查看已有行程详情
@@ -189,49 +273,143 @@ const TripPlanningPage: React.FC = () => {
     return new Date(dateString).toLocaleDateString('zh-CN');
   };
 
+  // 检查用户是否已登录（放在所有 Hook 之后以保证 Hooks 顺序稳定）
+  if (!user.isAuthenticated || !user.user) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Card>
+          <h3>请先登录</h3>
+          <p>您需要登录后才能创建旅行计划</p>
+          <Button type="primary" onClick={() => navigate('/login')}>
+            前往登录
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 style={{ marginBottom: '32px' }}>智能行程规划</h1>
       
       <Card title="创建新的旅行计划" style={{ marginBottom: '24px' }}>
         <Form form={form} layout="vertical" onFinish={onFinish}>
-          <Form.Item label="目的地" name="destination" rules={[{ required: true, message: '请输入目的地' }]}>
-            <Input placeholder="请输入您想去的地方" />
+          {/* 目的地字段 - 确保在最顶部 */}
+          <Form.Item 
+            label="目的地" 
+            name="destination" 
+            rules={[{ required: true, message: '请输入目的地' }]}
+            style={{ marginBottom: '16px' }}
+          >
+            <Input 
+              placeholder="请输入您想去的地方" 
+              size="large"
+              style={{ width: '100%' }}
+            />
           </Form.Item>
           
-          <Form.Item label="旅行日期" name="dates" rules={[{ required: true, message: '请选择旅行日期' }]}>
-            <DatePicker.RangePicker style={{ width: '100%' }} />
-          </Form.Item>
+          {/* 日期选择器 - 使用网格布局确保并排显示 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <Form.Item 
+              label="开始日期" 
+              name="startDate"
+              rules={[{ required: true, message: '请选择开始日期' }]}
+            >
+              <DatePicker 
+                style={{ width: '100%' }}
+                placeholder="选择开始日期"
+                size="large"
+              />
+            </Form.Item>
+            
+            <Form.Item 
+              label="结束日期" 
+              name="endDate"
+              rules={[{ required: true, message: '请选择结束日期' }]}
+            >
+              <DatePicker 
+                style={{ width: '100%' }}
+                placeholder="选择结束日期"
+                size="large"
+              />
+            </Form.Item>
+          </div>
           
-          <Form.Item label="旅行人数" name="travelers" initialValue={1}>
-            <Input type="number" min={1} />
-          </Form.Item>
+          {/* 其他字段 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <Form.Item label="旅行人数" name="travelers" initialValue={1}>
+              <Input type="number" min={1} size="large" />
+            </Form.Item>
+            
+            <Form.Item label="旅行主题" name="theme">
+              <Select placeholder="选择旅行主题" size="large">
+                <Option value="relaxation">休闲度假</Option>
+                <Option value="adventure">冒险探索</Option>
+                <Option value="culture">文化体验</Option>
+                <Option value="food">美食之旅</Option>
+                <Option value="shopping">购物血拼</Option>
+              </Select>
+            </Form.Item>
+          </div>
           
-          <Form.Item label="旅行主题" name="theme">
-            <Select placeholder="选择旅行主题">
-              <Option value="relaxation">休闲度假</Option>
-              <Option value="adventure">冒险探索</Option>
-              <Option value="culture">文化体验</Option>
-              <Option value="food">美食之旅</Option>
-              <Option value="shopping">购物血拼</Option>
-            </Select>
-          </Form.Item>
-          
-          <Form.Item label="特殊需求" name="specialRequests">
-            <TextArea 
-              rows={4} 
-              placeholder="请输入您的特殊要求或偏好，或使用语音输入" 
-              suffix={
+          <Form.Item label="特殊需求" name="specialRequests" style={{ marginBottom: '24px' }}>
+            <div style={{ position: 'relative' }}>
+              <TextArea 
+                rows={4} 
+                placeholder="请输入您的特殊要求或偏好，或使用右侧语音输入功能" 
+                size="large"
+                style={{ paddingRight: '60px' }}  // 为语音按钮留出空间
+                value={specialRequestsValue}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSpecialRequestsValue(v);
+                  try { form.setFieldsValue({ specialRequests: v }); } catch (err) { /* ignore */ }
+                }}
+              />
+              <div style={{ 
+                position: 'absolute', 
+                right: '8px', 
+                bottom: '8px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px' 
+              }}>
+                {recording && (
+                  <div style={{ display: 'flex', alignItems: 'center', color: '#ff4d4f' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ff4d4f',
+                      marginRight: '4px',
+                      animation: 'pulse 1s infinite'
+                    }}></div>
+                    <span style={{ fontSize: '12px' }}>录音中...</span>
+                  </div>
+                )}
                 <Button
                   type="text"
                   icon={recording ? <StopOutlined /> : <AudioOutlined />}
-                  onClick={recording ? stopRecording : startRecording}
-                  style={{ color: recording ? '#ff4d4f' : '#1890ff' }}
+                  onClick={() => {
+                    if (recording) {
+                      stopRecording();
+                    } else {
+                      startRecording();
+                    }
+                  }}
+                  style={{ 
+                    color: recording ? '#ff4d4f' : '#1890ff',
+                    border: recording ? '1px solid #ff4d4f' : '1px solid #d9d9d9',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    height: '32px'
+                  }}
+                  title={recording ? '停止录音' : '开始语音输入'}
                 >
-                  {recording ? '停止录音' : '语音输入'}
+                  {recording ? '停止' : '语音'}
                 </Button>
-              }
-            />
+              </div>
+            </div>
           </Form.Item>
           
           <Form.Item>
@@ -240,6 +418,8 @@ const TripPlanningPage: React.FC = () => {
               htmlType="submit" 
               loading={loading} 
               icon={<CompassOutlined />}
+              size="large"
+              style={{ width: '200px', height: '40px' }}
             >
               生成旅行计划
             </Button>
@@ -272,7 +452,24 @@ const TripPlanningPage: React.FC = () => {
                     onClick={() => viewExistingTripDetails(trip.id)}
                   >
                     查看详情
-                  </Button>
+                  </Button>,
+                  <Popconfirm
+                    title="确定要删除这个行程吗？"
+                    description="删除后将无法恢复，请谨慎操作。"
+                    onConfirm={() => handleDeleteTrip(trip.id)}
+                    okText="确定"
+                    cancelText="取消"
+                    okType="danger"
+                  >
+                    <Button 
+                      type="link" 
+                      danger 
+                      icon={<DeleteOutlined />}
+                      loading={deletingTripId === trip.id}
+                    >
+                      删除
+                    </Button>
+                  </Popconfirm>
                 ]}
               >
                 <List.Item.Meta
@@ -309,6 +506,9 @@ const TripPlanningPage: React.FC = () => {
           <Button key="close" onClick={handleModalClose}>
             关闭
           </Button>,
+          <Button key="map" icon={<EnvironmentOutlined />} onClick={viewTripMap}>
+            地图视图
+          </Button>,
           <Button key="details" type="primary" onClick={viewTripDetails}>
             查看详情
           </Button>
@@ -332,11 +532,58 @@ const TripPlanningPage: React.FC = () => {
               )}
             </p>
             <div style={{ marginTop: '16px' }}>
-              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {typeof generatedPlan.plan_content === 'string' 
-                  ? generatedPlan.plan_content 
-                  : JSON.stringify(generatedPlan.plan_content, null, 2)}
-              </pre>
+              {/* 优先渲染结构化内容（若存在），否则显示 plan_text */}
+              {(() => {
+                const pc = generatedPlan.plan_content || {};
+                const structured = pc.structured || null;
+                const text = generatedPlan.plan_text || pc.text || '';
+
+                if (structured && Array.isArray(structured.dailyItinerary)) {
+                  return (
+                    <div>
+                      {structured.dailyItinerary.map((day: any, idx: number) => (
+                        <div key={idx} style={{ marginBottom: '12px' }}>
+                          <h4 style={{ margin: '6px 0' }}>{day.date || `第${idx + 1}天`}</h4>
+                          {day.morning && <p><strong>上午：</strong>{day.morning}</p>}
+                          {day.afternoon && <p><strong>下午：</strong>{day.afternoon}</p>}
+                          {day.evening && <p><strong>傍晚/晚上：</strong>{day.evening}</p>}
+                          {Array.isArray(day.attractions) && day.attractions.length > 0 && (
+                            <p><strong>景点：</strong>{day.attractions.join('、')}</p>
+                          )}
+                          {Array.isArray(day.restaurants) && day.restaurants.length > 0 && (
+                            <p><strong>餐厅推荐：</strong>{day.restaurants.join('、')}</p>
+                          )}
+                        </div>
+                      ))}
+                      {/* 预算与推荐信息 */}
+                      {structured.recommendations && (
+                        <div style={{ marginTop: '8px' }}>
+                          <h4>推荐</h4>
+                          {structured.recommendations.attractions && <p><strong>推荐景点：</strong>{structured.recommendations.attractions.join('、')}</p>}
+                          {structured.recommendations.restaurants && <p><strong>推荐餐厅：</strong>{structured.recommendations.restaurants.join('、')}</p>}
+                          {structured.recommendations.tips && <p><strong>旅行贴士：</strong>{structured.recommendations.tips.join('；')}</p>}
+                        </div>
+                      )}
+                      {structured.budgetEstimation && (
+                        <div style={{ marginTop: '8px' }}>
+                          <h4>预算估算</h4>
+                          <p>总计：{structured.budgetEstimation.total} 元</p>
+                          {structured.budgetEstimation.categories && (
+                            <div>
+                              {Object.entries(structured.budgetEstimation.categories).map(([k, v]) => (
+                                <div key={k}><strong>{k}：</strong>{String(v)} 元</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // fallback: 显示纯文本摘要
+                return <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</pre>;
+              })()}
             </div>
           </div>
         )}

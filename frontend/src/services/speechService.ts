@@ -1,10 +1,13 @@
-import { userAPI } from './apiService';
 import { message } from 'antd';
 
 class SpeechService {
   private recognition: any = null;
   private isSupported: boolean = false;
   private isBackendAvailable: boolean = false;
+  // 语音服务 URL，可配置为完整地址或相对路径（例如 http://localhost:5000/api/speech 或 /api/speech）
+  private speechServiceUrl = import.meta.env.VITE_SPEECH_SERVICE_URL || '/api/speech';
+  // 用于保存后端录音的停止函数，避免与方法名冲突导致自调用
+  private backendStopFn: (() => void) | null = null;
 
   constructor() {
     this.checkSupport();
@@ -27,9 +30,9 @@ class SpeechService {
 
   private async checkBackendAvailability() {
     try {
-      const response = await fetch('/api/speech/status');
-      const data = await response.json();
-      this.isBackendAvailable = data.configured;
+  const response = await fetch(`${this.speechServiceUrl}/status`);
+  const data = await response.json();
+  this.isBackendAvailable = !!(data.configured || data.available);
     } catch (error) {
       console.warn('后端语音服务不可用:', error);
       this.isBackendAvailable = false;
@@ -195,8 +198,8 @@ class SpeechService {
           }
         }, 10000);
 
-        // 暴露停止函数
-        (this as any).stopBackendRecording = () => {
+        // 暴露停止函数到独立属性，避免覆盖类方法或引发递归
+        this.backendStopFn = () => {
           clearTimeout(recordingTimeout);
           if (mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
@@ -220,8 +223,13 @@ class SpeechService {
   }
 
   public stopBackendRecording() {
-    if ((this as any).stopBackendRecording) {
-      (this as any).stopBackendRecording();
+    try {
+      if (this.backendStopFn) {
+        this.backendStopFn();
+      }
+    } finally {
+      // 清除引用，防止内存泄漏或重复调用
+      this.backendStopFn = null;
     }
   }
 
@@ -230,7 +238,7 @@ class SpeechService {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
 
-      const response = await fetch('/api/speech/recognize', {
+      const response = await fetch(`${this.speechServiceUrl}/recognize`, {
         method: 'POST',
         body: formData,
       });

@@ -2,26 +2,93 @@
 class MapService {
   private mapInstance: any = null;
   private isLoaded: boolean = false;
+  private isFailed: boolean = false;
+  private scriptId = 'amap-js-api';
+  private loadPromise: Promise<void> | null = null;
 
   // 加载地图API
-  public loadMapScript(apiKey: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.isLoaded) {
-        resolve();
+  // 加载地图API时使用环境变量中的API密钥
+  public loadMapScript(apiKey: string = import.meta.env.VITE_MAP_API_KEY || 'your-map-api-key'): Promise<void> {
+    if (this.isLoaded) return Promise.resolve();
+    if (this.isFailed) return Promise.reject(new Error('地图API加载之前的尝试失败，已停止再次尝试'));
+    if (this.loadPromise) return this.loadPromise;
+
+    this.loadPromise = new Promise((resolve, reject) => {
+      // 如果页面中已存在脚本元素，复用它
+      const existing = document.getElementById(this.scriptId) as HTMLScriptElement | null;
+      if (existing) {
+        // 如果 SDK 已就绪
+        if ((window as any).AMap) {
+          this.isLoaded = true;
+          resolve();
+          this.loadPromise = null;
+          return;
+        }
+
+        // 否则监听已存在脚本的 load/error
+        const onLoad = () => {
+          existing.removeEventListener('load', onLoad);
+          existing.removeEventListener('error', onError);
+          this.isLoaded = true;
+          resolve();
+          this.loadPromise = null;
+        };
+
+        const onError = () => {
+          existing.removeEventListener('load', onLoad);
+          existing.removeEventListener('error', onError);
+          this.isFailed = true;
+          reject(new Error('地图API加载失败（现有脚本报错）'));
+          this.loadPromise = null;
+        };
+
+        existing.addEventListener('load', onLoad);
+        existing.addEventListener('error', onError);
         return;
       }
 
       const script = document.createElement('script');
+      script.id = this.scriptId;
       script.type = 'text/javascript';
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geocoder,AMap.PlaceSearch,AMap.AutoComplete`;
-      script.onerror = () => reject(new Error('地图API加载失败'));
-      script.onload = () => {
-        this.isLoaded = true;
-        resolve();
+      script.async = true;
+      script.defer = true;
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geocoder,AMap.PlaceSearch,AMap.AutoComplete,AMap.Polyline`;
+
+      const onLoad = () => {
+        script.removeEventListener('load', onLoad);
+        script.removeEventListener('error', onError);
+        // 暂不立即标记为成功，先进行短暂延迟并校验 SDK 是否完整可用
+        setTimeout(() => {
+          // 基础校验：确保 window.AMap 和关键构造函数存在
+          if (!(window as any).AMap || typeof (window as any).AMap.Map !== 'function') {
+            this.isFailed = true;
+            this.loadPromise = null;
+            reject(new Error('地图API加载不完整或被限制（可能是API Key或Referer限制）'));
+            return;
+          }
+
+          this.isLoaded = true;
+          this.isFailed = false;
+          resolve();
+          this.loadPromise = null;
+        }, 60);
       };
+
+      const onError = () => {
+        script.removeEventListener('load', onLoad);
+        script.removeEventListener('error', onError);
+        this.isFailed = true;
+        reject(new Error('地图API加载失败'));
+        this.loadPromise = null;
+      };
+
+      script.addEventListener('load', onLoad);
+      script.addEventListener('error', onError);
 
       document.head.appendChild(script);
     });
+
+    return this.loadPromise;
   }
 
   // 初始化地图
@@ -139,7 +206,7 @@ class MapService {
 
 // 后端API调用方法
 export class MapAPIService {
-  private baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   /**
    * 地理编码（后端API）

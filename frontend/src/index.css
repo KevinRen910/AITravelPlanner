@@ -13,12 +13,17 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html, body, #root {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  /* Use normal document flow so header sits at the top and page can scroll to top */
+  display: block;
   min-width: 320px;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
@@ -31,4 +36,31 @@ body {
     color: #213547;
     background-color: #ffffff;
   }
+}
+
+/* 录音动画效果 */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 语音输入按钮样式优化 */
+.ant-input-affix-wrapper .ant-input-suffix {
+  display: flex;
+  align-items: center;
+}
+
+/* 特殊需求文本框样式 */
+.ant-form-item-control-input-content {
+  position: relative;
 }

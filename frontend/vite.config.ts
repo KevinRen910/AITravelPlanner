@@ -10,7 +10,9 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        // 不移除 /api 前缀，保持与后端路由挂载一致（后端使用 app.use('/api/speech', ...))
+        // 若需要去掉前缀，请确保后端挂载路径与代理规则匹配
+        // rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   }
