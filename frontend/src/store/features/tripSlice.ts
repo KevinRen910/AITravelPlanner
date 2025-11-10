@@ -20,15 +20,25 @@ interface Activity {
 
 interface Trip {
   id: string;
-  title: string;
-  description: string;
-  startDate: string;
-  endDate: string;
+  user_id: string;
   destination: string;
-  activities: Activity[];
-  budget: number;
-  createdAt: string;
-  updatedAt: string;
+  start_date: string;
+  end_date: string;
+  travelers: number;
+  theme: string;
+  special_requests: string;
+  plan_content: any;
+  estimated_budget: number;
+  preferences: {
+    destination: string;
+    startDate: string;
+    endDate: string;
+    travelers: number;
+    theme: string;
+    specialRequests: string;
+  };
+  created_at: string;
+  updated_at: string;
 }
 
 interface TripState {

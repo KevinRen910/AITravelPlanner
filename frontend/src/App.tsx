@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
-import store from './store';
+import store, { RootState } from './store';
+import { setUser } from './store/features/userSlice';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import TripPlanningPage from './pages/TripPlanningPage';
@@ -15,10 +16,66 @@ import ApiKeySettingsPage from './pages/ApiKeySettingsPage';
 import 'antd/dist/reset.css';
 import './App.css';
 
-// 保护路由组件
+// 保护路由组件 - 添加实际的认证检查
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 这里可以添加认证逻辑
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
   return <>{children}</>;
+};
+
+// 用户状态初始化组件
+const UserInitializer: React.FC = () => {
+  const dispatch = useDispatch();
+  
+  useEffect(() => {
+    // 从localStorage恢复用户状态
+    const savedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    
+    if (savedUser && token) {
+      try {
+        const userData = JSON.parse(savedUser);
+        dispatch(setUser(userData));
+        console.log('用户状态已从localStorage恢复:', userData);
+      } catch (error) {
+        console.error('恢复用户状态失败:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
+    }
+  }, [dispatch]);
+  
+  return null;
+};
+
+// 行程状态初始化组件
+const TripInitializer: React.FC = () => {
+  const dispatch = useDispatch();
+  
+  useEffect(() => {
+    // 从localStorage恢复行程状态
+    const savedTrips = localStorage.getItem('userTrips');
+    
+    if (savedTrips) {
+      try {
+        const tripsData = JSON.parse(savedTrips);
+        // 如果有行程数据，更新Redux状态
+        tripsData.forEach((trip: any) => {
+          dispatch(addTrip(trip));
+        });
+        console.log('行程状态已从localStorage恢复:', tripsData.length, '条记录');
+      } catch (error) {
+        console.error('恢复行程状态失败:', error);
+        localStorage.removeItem('userTrips');
+      }
+    }
+  }, [dispatch]);
+  
+  return null;
 };
 
 function App() {
@@ -26,6 +83,8 @@ function App() {
     <Provider store={store}>
       <ConfigProvider locale={zhCN}>
         <Router>
+          <UserInitializer />
+          <TripInitializer />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={

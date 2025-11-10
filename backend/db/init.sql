@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS trips (
   theme VARCHAR(50),
   special_requests TEXT,
   plan_content JSONB,
+  estimated_budget DECIMAL(10, 2) DEFAULT 0,  -- 添加缺失的列
   preferences JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Spin, message, Tag, Descriptions } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Card, Button, Spin, message, Tag, Descriptions, Alert } from 'antd';
+import { ArrowLeftOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { tripAPI } from '../services/apiService';
 
 interface Trip {
   id: string;
+  user_id: string;
   destination: string;
   start_date: string;
   end_date: string;
@@ -13,8 +14,17 @@ interface Trip {
   theme: string;
   special_requests: string;
   plan_content: any;
-  preferences: any;
+  estimated_budget: number;
+  preferences: {
+    destination: string;
+    startDate: string;
+    endDate: string;
+    travelers: number;
+    theme: string;
+    specialRequests: string;
+  };
   created_at: string;
+  updated_at: string;
 }
 
 const TripDetailPage: React.FC = () => {
@@ -35,7 +45,14 @@ const TripDetailPage: React.FC = () => {
       setLoading(true);
       const response = await tripAPI.getTripById(tripId);
       console.log('获取到的行程数据:', response.data);
-      setTrip(response.data);
+      
+      // 检查是否是模拟数据
+      const tripData = response.data;
+      if (tripData.id && tripData.id.startsWith('mock-')) {
+        message.warning('当前显示的是模拟数据，请检查数据库连接');
+      }
+      
+      setTrip(tripData);
     } catch (error: any) {
       console.error('获取行程详情失败:', error);
       setError(error.response?.data?.error || '获取行程详情失败');
@@ -86,6 +103,9 @@ const TripDetailPage: React.FC = () => {
     );
   }
 
+  // 检查是否是模拟数据
+  const isMockData = trip.id && trip.id.startsWith('mock-');
+
   return (
     <div>
       <div style={{ marginBottom: '16px' }}>
@@ -98,6 +118,17 @@ const TripDetailPage: React.FC = () => {
           返回行程列表
         </Button>
       </div>
+
+      {isMockData && (
+        <Alert
+          message="模拟数据提示"
+          description="当前显示的是模拟数据，实际数据可能未保存到数据库。请检查数据库连接和表结构。"
+          type="warning"
+          showIcon
+          icon={<ExclamationCircleOutlined />}
+          style={{ marginBottom: '16px' }}
+        />
+      )}
 
       <Card title={`行程详情 - ${trip.destination}`}>
         <Descriptions bordered column={2}>
@@ -131,6 +162,7 @@ const TripDetailPage: React.FC = () => {
 
         <div style={{ marginTop: '16px', color: '#666', fontSize: '12px' }}>
           创建时间: {new Date(trip.created_at).toLocaleString('zh-CN')}
+          {isMockData && <Tag color="orange" style={{ marginLeft: '8px' }}>模拟数据</Tag>}
         </div>
       </Card>
     </div>

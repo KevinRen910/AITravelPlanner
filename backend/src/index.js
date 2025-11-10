@@ -5,8 +5,9 @@ const userRoutes = require('./routes/userRoutes');
 const tripRoutes = require('./routes/tripRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const mapRoutes = require('./routes/mapRoutes');
-const speechRoutes = require('./routes/speechRoutes'); // 新增语音识别路由
+const speechRoutes = require('./routes/speechRoutes');
 const config = require('./config/config');
+const supabase = require('./config/supabase'); // 导入Supabase
 
 const app = express();
 
@@ -14,7 +15,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(fileUpload({
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB限制
+  limits: { fileSize: 10 * 1024 * 1024 },
   abortOnLimit: true,
   createParentPath: true
 }));
@@ -24,15 +25,17 @@ app.use('/api/users', userRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/map', mapRoutes);
-app.use('/api/speech', speechRoutes); // 新增语音识别路由
+app.use('/api/speech', speechRoutes);
 
-// 健康检查端点
-app.get('/api/health', (req, res) => {
+// 健康检查端点，添加数据库连接状态
+app.get('/api/health', async (req, res) => {
+  const dbConnected = await supabase.testConnection();
+  
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
     services: {
-      database: 'Connected',
+      database: dbConnected ? 'Connected' : 'Disconnected',
       ai: process.env.AI_API_KEY ? 'Configured' : 'Not Configured',
       speech: process.env.SPEECH_API_KEY ? 'Configured' : 'Not Configured',
       map: process.env.MAP_API_KEY ? 'Configured' : 'Not Configured'
@@ -56,10 +59,24 @@ app.use('*', (req, res) => {
 
 const PORT = config.port || 5000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 服务器运行在端口 ${PORT}`);
-  console.log(`📊 健康检查: http://localhost:${PORT}/api/health`);
-  console.log(`🗣️  语音识别服务: ${process.env.SPEECH_API_KEY ? '已配置' : '未配置'}`);
-  console.log(`🗺️  地图服务: ${process.env.MAP_API_KEY ? '已配置' : '未配置'}`);
-  console.log(`🤖 AI服务: ${process.env.AI_API_KEY ? '已配置' : '未配置'}`);
-});
+// 启动服务器并测试连接
+const startServer = async () => {
+  try {
+    // 测试Supabase连接
+    const dbConnected = await supabase.testConnection();
+    
+    app.listen(PORT, () => {
+      console.log(`服务器运行在端口 ${PORT}`);
+      console.log(`健康检查: http://localhost:${PORT}/api/health`);
+      console.log(`语音识别服务: ${process.env.SPEECH_API_KEY ? '已配置' : '未配置'}`);
+      console.log(`地图服务: ${process.env.MAP_API_KEY ? '已配置' : '未配置'}`);
+      console.log(`AI服务: ${process.env.AI_API_KEY ? '已配置' : '未配置'}`);
+      console.log(`数据库连接: ${dbConnected ? '成功' : '失败'}`);
+    });
+  } catch (error) {
+    console.error('服务器启动失败:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
