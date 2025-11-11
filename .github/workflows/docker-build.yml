@@ -1,0 +1,56 @@
+name: Docker Build and Push to ACR
+
+on:
+  push:
+    branches: [ main ]  # 当推送到main分支时触发
+  pull_request:
+    branches: [ main ]  # 当有PR合并到main分支时触发
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出代码
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      # 2. 设置Docker Buildx（支持多平台构建）
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录到阿里云容器镜像服务
+      - name: Log in to Alibaba Cloud Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ALIYUN_ACR_REGISTRY }}
+          username: ${{ secrets.ALIYUN_ACR_USERNAME }}
+          password: ${{ secrets.ALIYUN_ACR_PASSWORD }}
+
+      # 4. 构建并推送后端Docker镜像到阿里云
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./AITravelPlanner/backend
+          file: ./AITravelPlanner/backend/Dockerfile
+          tags: |
+            ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner_backend:latest
+            ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner_backend:${{ github.sha }}
+          push: true
+
+      # 5. 构建并推送前端Docker镜像到阿里云
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./AITravelPlanner/frontend
+          file: ./AITravelPlanner/frontend/Dockerfile
+          tags: |
+            ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner/frontend:latest
+            ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner/frontend:${{ github.sha }}
+          push: true
+
+      # 6. 可选：使用docker-compose构建并推送（如果需要）
+      # - name: Build and push with docker-compose
+      #   run: |
+      #     docker-compose -f ./AITravelPlanner/docker-compose.yml build
+      #     docker-compose -f ./AITravelPlanner/docker-compose.yml push
