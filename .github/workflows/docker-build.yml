@@ -31,7 +31,7 @@ jobs:
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./AITravelPlanner/backend
+          context: ./backend
           file: ./AITravelPlanner/backend/Dockerfile
           tags: |
             ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner_backend:latest
@@ -42,7 +42,7 @@ jobs:
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./AITravelPlanner/frontend
+          context: ./frontend
           file: ./AITravelPlanner/frontend/Dockerfile
           tags: |
             ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner/frontend:latest
