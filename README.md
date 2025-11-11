@@ -23,10 +23,60 @@
 
 ## 快速开始
 
-### 使用Docker Compose（推荐）
+### 使用阿里云Docker镜像（推荐）
+
+1. 确保已安装Docker
+
+2. 拉取Docker镜像
+   - 后端镜像：
+   docker pull crpi-ujexkms7mmv36v3z.cn-hangzhou.personal.cr.aliyuncs.com/rkw/ai_travel_planner_backend:latest
+   ```
+   
+   - 前端镜像：
+   docker pull crpi-ujexkms7mmv36v3z.cn-hangzhou.personal.cr.aliyuncs.com/rkw/ai_travel_planner_frontend:latest
+   ```
+
+3. 准备环境变量配置文件
+   创建一个`.env`文件，包含以下内容：
+   ```env
+   # 后端环境变量
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_KEY=your_supabase_key
+   JWT_SECRET=your_jwt_secret
+   OPENAI_API_KEY=your_openai_api_key (可选)
+   
+   # 前端环境变量
+   VITE_API_URL=http://localhost:5000
+   ```
+
+4. 运行后端容器
+   ```powershell
+   docker run -d \
+     --name ai-travel-backend \
+     -p 5000:5000 \
+     --env-file .env \
+     crpi-ujexkms7mmv36v3z.cn-hangzhou.personal.cr.aliyuncs.com/rkw/ai_travel_planner_backend:latest
+   ```
+
+5. 运行前端容器
+   ```powershell
+   docker run -d \
+     --name ai-travel-frontend \
+     -p 3000:3000 \
+     --env VITE_API_URL=http://localhost:5000 \
+     crpi-ujexkms7mmv36v3z.cn-hangzhou.personal.cr.aliyuncs.com/rkw/ai_travel_planner_frontend:latest
+   ```
+
+6. 访问应用
+   - 前端：http://localhost:3000
+   - 后端API：http://localhost:5000
+   - 健康检查：http://localhost:5000/api/health
+
+### 使用Docker Compose（备选方案）
 
 1. 克隆项目
 ```bash
+# 可选，如果需要使用docker-compose方式部署
 git clone https://github.com/your-username/ai-travel-planner.git
 cd ai-travel-planner
 ```
@@ -46,59 +96,6 @@ docker-compose up -d
 - 前端：http://localhost:3000
 - 后端API：http://localhost:5000
 - 健康检查：http://localhost:5000/api/health
-
-### 手动安装
-
-#### 后端
-
-1. 进入后端目录
-```bash
-cd backend
-```
-
-2. 安装依赖
-```bash
-npm install
-```
-
-3. 配置环境变量
-```bash
-cp .env.example .env
-# 编辑.env文件，填入你的API密钥
-```
-
-4. 初始化数据库
-```bash
-npm run init-db
-```
-
-5. 启动服务
-```bash
-npm run dev
-```
-
-#### 前端
-
-1. 进入前端目录
-```bash
-cd frontend
-```
-
-2. 安装依赖
-```bash
-npm install
-```
-
-3. 配置环境变量
-```bash
-cp .env.example .env
-# 编辑.env文件，设置后端API地址
-```
-
-4. 启动服务
-```bash
-npm start
-```
 
 ## API密钥配置
 
@@ -124,7 +121,6 @@ npm start
 1. 在Supabase创建项目并获取连接信息
 2. 运行数据库初始化脚本：
    在SQL Editor界面复制 backend/db/init.sql 的全部内容并粘贴，点击run运行
-```
 
 ### 功能测试
 
