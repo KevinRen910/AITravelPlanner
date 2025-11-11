@@ -1,22 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface Location {
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-}
-
-interface Activity {
-  id: string;
-  name: string;
-  description: string;
-  location: Location;
-  startTime: string;
-  endTime: string;
-  category: string;
-  cost: number;
-}
+// 完全删除Location接口的定义
 
 interface Trip {
   id: string;

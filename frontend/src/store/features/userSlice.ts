@@ -5,6 +5,7 @@ interface User {
   email: string;
   createdAt: string;
   updatedAt: string;
+  preferences?: { [key: string]: any };
 }
 
 interface UserState {

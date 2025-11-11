@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Button, Row, Col } from 'antd';
-import { HomeOutlined, CompassOutlined, UserOutlined } from '@ant-design/icons';
+import { CompassOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
