@@ -70,7 +70,7 @@ jobs:
           file: ./frontend/Dockerfile
           tags: |
             ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner_frontend:latest
-          push: false  # 先不推送，成功后再修改为true
+          push: true  # 先不推送，成功后再修改为true
           build-args: |
             # 可选：添加构建参数
             NODE_ENV=production
