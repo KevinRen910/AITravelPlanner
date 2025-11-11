@@ -20,34 +20,30 @@ services:
       - SPEECH_API_SECRET=${SPEECH_API_SECRET}
       - MAP_API_KEY=${MAP_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
       - REACT_APP_API_URL=http://localhost:5000/api
       - REACT_APP_MAP_API_KEY=${MAP_API_KEY}
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost"]
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
 
 networks:
   default:

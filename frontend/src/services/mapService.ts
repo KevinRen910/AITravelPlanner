@@ -92,17 +92,48 @@ class MapService {
   }
 
   // 初始化地图
+  // 在 MapService 类中修改 initMap 方法
   public initMap(containerId: string, center: [number, number] = [116.397428, 39.90923]): any {
-    if (!this.isLoaded) {
-      throw new Error('地图API未加载');
+    if (!this.isLoaded || !(window as any).AMap || typeof (window as any).AMap.Map !== 'function') {
+      throw new Error('地图API未加载或不完整');
     }
-
-    this.mapInstance = new (window as any).AMap.Map(containerId, {
-      zoom: 10,
-      center: center,
-    });
-
-    return this.mapInstance;
+  
+    try {
+      // 确保容器存在
+      const container = document.getElementById(containerId);
+      if (!container) {
+        throw new Error(`找不到ID为 ${containerId} 的地图容器`);
+      }
+      
+      // 清除可能存在的旧地图实例
+      if (this.mapInstance) {
+        try {
+          this.mapInstance.destroy();
+        } catch (e) {
+          console.warn('销毁旧地图实例失败:', e);
+        }
+        this.mapInstance = null;
+      }
+      
+      // 创建新的地图实例
+      this.mapInstance = new (window as any).AMap.Map(containerId, {
+        zoom: 10,
+        center: center,
+        resizeEnable: true, // 允许地图自动适应容器大小变化
+        doubleClickZoom: true, // 启用双击缩放
+        dragEnable: true, // 启用拖拽
+      });
+      
+      // 验证地图实例创建是否成功
+      if (!this.mapInstance || typeof this.mapInstance.getCenter !== 'function') {
+        throw new Error('地图实例创建失败或不完整');
+      }
+      
+      return this.mapInstance;
+    } catch (error) {
+      console.error('地图初始化过程中发生错误:', error);
+      throw error;
+    }
   }
 
   // 添加标记
