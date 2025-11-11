@@ -32,7 +32,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ./AITravelPlanner/backend/Dockerfile
+          file: ./backend/Dockerfile
           tags: |
             ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner_backend:latest
             ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner_backend:${{ github.sha }}
@@ -43,7 +43,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./AITravelPlanner/frontend/Dockerfile
+          file: ./frontend/Dockerfile
           tags: |
             ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner/frontend:latest
             ${{ secrets.ALIYUN_ACR_REGISTRY }}/ai_travel_planner/frontend:${{ github.sha }}
